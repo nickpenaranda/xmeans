@@ -40,7 +40,7 @@ xmeans.genTestData2 = function(dims, n, k, sd) {
     return data;
 }
 
-// Generate clustered data on a diagonal
+// Generate 2d clustered data on a diagonal
 xmeans.genTestData3 = function() {
     var data = [];
     for (var i = 0; i < 4; i++) {
@@ -52,6 +52,20 @@ xmeans.genTestData3 = function() {
         }
     }
     return data;
+}
+
+xmeans._extractVec = function(x, dataFields) {
+    if (dataFields == null) {
+        return x;
+    }
+
+    var nDim = dataFields.length;
+    var vec = Array(nDim);
+    for (var i=0; i < nDim; i++) {
+        vec[i] = x[dataFields[i]];
+    }
+
+    return vec;
 }
 
 // Shallow merge
@@ -68,8 +82,18 @@ xmeans._mergeOptions = function(a, b) {
     return o;
 }
 
+xmeans._randomNormalVec = function(dims) {
+    var vec = [];
+    for (var i = 0; i < dims; i++) {
+        vec.push(-1 + (Math.random() * 2));
+    }
+
+    return xmeans._normVec(vec);
+}
+
 xmeans._normVec = function(vec) {
-    var veclen = xmeans._distance([0,0],vec);
+    var veclen = xmeans._magnitude(vec);
+
     return vec.map(function(e) {
         return e / veclen;
     });
@@ -91,17 +115,20 @@ xmeans._invVec = function(x) {
     return xmeans._scaleVec(x,-1);
 }
 
-xmeans._center = function(data) {
+xmeans._center = function(data, fields) {
     if (data.length == 0 || data[0].length == 0) {
         throw "Invalid data";
     }
 
+    var mustExtract = fields != null;
     var n = data.length;
-    var m = data[0].length;
+    var m = mustExtract ? fields.length : data[0].length;
+
     var result = Array.apply(null, Array(m)).map(Number.prototype.valueOf, 0);
 
     var sum = data.reduce(function(memo, i) {
-        i.forEach(function(j,k) {
+        var p = mustExtract ? xmeans._extractVec(i, fields) : i;
+        p.forEach(function(j,k) {
             memo[k] += j;
         });
         return memo;
@@ -110,6 +137,12 @@ xmeans._center = function(data) {
     return sum.map(function(e) {
         return e/n;
     });
+}
+
+xmeans._magnitude = function(x) {
+    return Math.sqrt(x.reduce(function(memo, e) {
+        return memo + Math.pow(e,2);
+    }, 0));
 }
 
 xmeans._distance = function(x,y) {
@@ -123,18 +156,19 @@ xmeans._distance = function(x,y) {
         result[i] = y[i] - x[i];
     }
 
-    return Math.sqrt(result.reduce(function(memo, e) {
-        return memo + Math.pow(e, 2);
-    }, 0));
+    return xmeans._magnitude(result);
 }
 
 // Returns [lowerBound, upperBound], both vectors of same dimension as vecs
-xmeans._bounds = function(vecs) {
+xmeans._bounds = function(vecs, fields) {
     if (vecs.length == 0 || vecs[0].length == 0) {
         throw "Invalid data";
     }
 
-    var m = [vecs[0].slice(0),vecs[0].slice(0)];
+    var m = [
+        xmeans._extractVec(vecs[0], fields),
+        xmeans._extractVec(vecs[0], fields)
+    ];
 
     return vecs.reduce(function(memo,i) {
         i.forEach(function(j,k) {
@@ -176,7 +210,9 @@ xmeans._kmeans = function(data, options) {
     var b = xmeans._bounds(data);
     var n = data.length;
 
-    var dims = data[0].length;
+    var dims = options.dataFields == undefined
+        ? data[0].length
+        : options.dataFields.length;
 
     var clusters = [];
 
@@ -195,7 +231,7 @@ xmeans._kmeans = function(data, options) {
     }
 
     var nIters = 0;
-    while (true) {
+    while (nIters < 100) {
         nIters++;
 
         // Clear centroid point sets
@@ -205,7 +241,7 @@ xmeans._kmeans = function(data, options) {
 
         // Assign
         for (var i = 0; i < n; i++) {
-            var point = data[i];
+            var point = xmeans._extractVec(data[i], options.dataFields);
             var closestClusterIndex = 0;
             var closestClusterDist = Infinity;
             for (var j = 0; j < options.k; j++) {
@@ -216,7 +252,7 @@ xmeans._kmeans = function(data, options) {
                     closestClusterIndex = j;
                 }
             }
-            clusters[closestClusterIndex].points.push(point);
+            clusters[closestClusterIndex].points.push(data[i]);
         }
 
         // Adjust centroids
@@ -226,7 +262,7 @@ xmeans._kmeans = function(data, options) {
                 continue;
             }
 
-            var newCentroid = xmeans._center(clusters[i].points);
+            var newCentroid = xmeans._center(clusters[i].points, options.dataFields);
             var moveDistance = xmeans._distance(newCentroid, clusters[i].centroid);
             clusters[i].centroid = newCentroid;
             distMoved += moveDistance;
@@ -242,7 +278,7 @@ xmeans._kmeans = function(data, options) {
         var cluster = clusters[i];
         cluster.sumSqDist = 0;
         cluster.size = cluster.points.reduce(function(memo,p) {
-            var dist = xmeans._distance(cluster.centroid, p);
+            var dist = xmeans._distance(cluster.centroid, xmeans._extractVec(p, options.dataFields));
             cluster.sumSqDist += Math.pow(dist, 2);
             if (dist > memo) {
                 return dist;
@@ -316,7 +352,9 @@ xmeans.xmeans = function(data, options) {
     }
 
     var k = options.kMin;
-    var nDims = data[0].length;
+    var nDims = options.dataFields != null
+            ? options.dataFields.length
+            : data[0].length;
     var nGlobalPoints = data.length;
 
     var clusters = xmeans._kmeans(data, xmeans._mergeOptions(options, {k: k}));
@@ -345,12 +383,13 @@ xmeans.xmeans = function(data, options) {
 
             // Find split vector
             // TODO: What should scaling factor be? (set to 0.5)
-            var splitVector = xmeans._scaleVec(xmeans._normVec([-1 + (Math.random() * 2), Math.random()]), cluster.size * 0.5);
+            var baseVec = xmeans._randomNormalVec(nDims);
+            var splitVector = xmeans._scaleVec(baseVec, cluster.size * 0.5);
 
             // Calculate new centroids
             var newCentroids = [
-                xmeans._addVec(cluster.centroid,splitVector),
-                xmeans._addVec(cluster.centroid,xmeans._invVec(splitVector))
+                xmeans._addVec(cluster.centroid, splitVector),
+                xmeans._addVec(cluster.centroid, xmeans._invVec(splitVector))
             ];
 
             // Run local k-means on cluster with child centroids
@@ -403,9 +442,15 @@ xmeans.oxmeans = function(data, options) {
 
 xmeans.colors = ["red","green","blue","black","darkorange","blueviolet","deeppink","darkolivegreen"];
 
+xmeans.zVector = [Math.sqrt(2) / 2, -Math.sqrt(2) / 4];
+
+xmeans._renderCircle = function(ctx,x,y,z,radius) {
+    ctx.arc(x + (z*xmeans.zVector[0]), y + (z*xmeans.zVector[1]), radius, 0, Math.PI * 2);
+}
+
 xmeans.render = function(clusters) {
     var ctx = document.getElementById("canvas").getContext("2d");
-    ctx.clearRect(0,0,500,500);
+    ctx.clearRect(0,0,1000,1000);
 
     ctx.lineWidth = 1;
 
@@ -418,19 +463,19 @@ xmeans.render = function(clusters) {
         // Points
         e.points.forEach(function(p) {
             ctx.beginPath();
-            ctx.arc(p[0],p[1],2,0,Math.PI * 2);
+            xmeans._renderCircle(ctx,p[0],p[1],p[2],2);
             ctx.fill();
         });
 
         // Centroid
         ctx.beginPath();
-        ctx.arc(e.centroid[0],e.centroid[1],4,0,Math.PI * 2);
+        xmeans._renderCircle(ctx,e.centroid[0],e.centroid[1],e.centroid[2],4);
         ctx.stroke();
 
         // Bounding circle
         ctx.setLineDash([4,8]);
         ctx.beginPath();
-        ctx.arc(e.centroid[0],e.centroid[1],e.size,0,Math.PI * 2);
+        xmeans._renderCircle(ctx,e.centroid[0],e.centroid[1],e.centroid[2],e.size);
         ctx.stroke();
     });
 }
