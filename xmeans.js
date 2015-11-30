@@ -442,17 +442,48 @@ xmeans.oxmeans = function(data, options) {
 
 xmeans.colors = ["red","green","blue","black","darkorange","blueviolet","deeppink","darkolivegreen"];
 
-xmeans.zVector = [Math.sqrt(2) / 2, -Math.sqrt(2) / 4];
+xmeans.zVector = [Math.sqrt(2) / 2, Math.sqrt(2) / 3];
 
 xmeans._renderCircle = function(ctx,x,y,z,radius) {
-    ctx.arc(x + (z*xmeans.zVector[0]), y + (z*xmeans.zVector[1]), radius, 0, Math.PI * 2);
+    if (z == null) {
+        z = 0;
+    }
+
+    ctx.arc(x + (z*xmeans.zVector[0]), 1000 - (y + (z*xmeans.zVector[1])), radius, 0, Math.PI * 2);
 }
 
 xmeans.render = function(clusters) {
     var ctx = document.getElementById("canvas").getContext("2d");
     ctx.clearRect(0,0,1000,1000);
 
-    ctx.lineWidth = 1;
+    var is3d = clusters[0].centroid.length > 2;
+
+    if (is3d) {
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "black";
+
+        ctx.beginPath();
+        ctx.rect(0,500,500,500);
+        ctx.stroke();
+
+        ctx.rect(xmeans.zVector[0]*500,500-xmeans.zVector[1]*500,500,500);
+        ctx.stroke();
+
+        var corners = [
+            [0, 500, xmeans.zVector[0]*500, 500-xmeans.zVector[1]*500],
+            [0, 1000, xmeans.zVector[0]*500, 1000-xmeans.zVector[1]*500],
+            [500, 500, 500+xmeans.zVector[0]*500, 500-xmeans.zVector[1]*500],
+            [500, 1000, 500+xmeans.zVector[0]*500, 1000-xmeans.zVector[1]*500],
+        ];
+
+        corners.forEach(function(l) {
+            ctx.beginPath();
+            ctx.moveTo(l[0],l[1]);
+            ctx.lineTo(l[2],l[3]);
+            ctx.stroke();
+        });
+    }
 
     var nColors = xmeans.colors.length;
     clusters.forEach(function(e,i) {
@@ -463,7 +494,7 @@ xmeans.render = function(clusters) {
         // Points
         e.points.forEach(function(p) {
             ctx.beginPath();
-            xmeans._renderCircle(ctx,p[0],p[1],p[2],2);
+            xmeans._renderCircle(ctx,p[0],p[1],is3d ? p[2] : 0,2);
             ctx.fill();
         });
 
