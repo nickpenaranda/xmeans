@@ -170,12 +170,19 @@ xmeans._bounds = function(vecs, fields) {
         xmeans._extractVec(vecs[0], fields)
     ];
 
+    if (fields == null) {
+        fields = [];
+        for (var i = 0; i < vecs[0].length; i++) {
+            fields.push(i);
+        }
+    }
+
     return vecs.reduce(function(memo,i) {
-        i.forEach(function(j,k) {
-            if (j < memo[0][k]) {
-                memo[0][k] = j;
-            } else if (j > memo[1][k]) {
-                memo[1][k] = j;
+        fields.forEach(function(j,k) {
+            if (i[j] < memo[0][k]) {
+                memo[0][k] = i[j];
+            } else if (i[j] > memo[1][k]) {
+                memo[1][k] = i[j];
             }
         });
 
@@ -207,12 +214,12 @@ xmeans._kmeans = function(data, options) {
         throw "Missing required parameter: option (object)"
     }
 
-    var b = xmeans._bounds(data);
-    var n = data.length;
-
     var dims = options.dataFields == undefined
         ? data[0].length
         : options.dataFields.length;
+
+    var b = xmeans._bounds(data, options.dataFields);
+    var n = data.length;
 
     var clusters = [];
 
@@ -373,11 +380,12 @@ xmeans.xmeans = function(data, options) {
 
         for (var i = 0; i < k; i++) {
             var cluster = clusters[i];
-            // if (cluster.points.length == 0) {
-            //     clusters.splice(i,1);
-            //     i--;
-            //     continue;
-            // }
+            if (cluster.points.length == 0) {
+                clusters.splice(i,1);
+                i--;
+                k--;
+                continue;
+            }
 
             ////// Split each centroid
 
