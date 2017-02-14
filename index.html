@@ -1,11 +1,20 @@
 <html>
 <head>
+    <title>
+        Clustering tool
+    </title>
     <style>
         #canvas {
             width:500px;
             height:500px;
             border:1px solid #000000;
         }
+
+        #help {
+            background-color: lightgray;
+            font-family: monospace;
+        }
+
     </style>
     <script src="jquery-2.1.4.min.js"></script>
 </head>
@@ -13,6 +22,48 @@
     <div>
         <canvas id="canvas" width=1000 height=1000 />
     </div>
+    <div id="help">
+        <h3>Notes</h3>
+
+        <ul>
+            <li>
+                <b>USE THE DEVELOPER CONSOLE</b>
+            </li>
+
+            <li>
+                Use `xmeans` object to generate test data and perform clustering
+            </li>
+
+            <li>
+            xmeans.genTestData(dims, n) generates <em>n</em> uniformly random <em>dims</em>-dimensional points
+            </li>
+
+            <li>
+            xmeans.genTestData2(dims, n, k, sd) generates <em>n</em>, <em>dims</em>-dimensional points clustered around <em>k</em> centroids with standard deviation of <em>sd</em>
+            </li>
+
+            <li>
+            xmeans.genTestData3() generates 2d clustered data on a diagonal
+            </li>
+
+            <li>
+            xmeans.xmeans(data, options) returns clustering data.  <em>options</em> is a plain object with optional properties "kMin" and "kMax", by default <em>2</em> and <em>n/4</em>, respectively.
+            </li>
+
+            <li>
+            xmeans.oxmeans(data, options) runs xmeans.xmeans(...) repeatedly looking for the best model (maximize BIC).  <em>options</em> is a plain object that accepts optional properties for xmeans.xmeans(...) and an additional option, "iters" (default 3).
+            </li>
+
+            <li>
+            xmeans.render(clusters) to render the output of xmeans.xmeans(...)
+            </li>
+        </ul>
+    </div>
     <script src="xmeans.js"></script>
+    <script>
+    $(document).ready(function() {
+            xmeans.render(xmeans.oxmeans(xmeans.genTestData2(2, 2000, 7, 50)));
+    });
+    </script>
 </body>
 </html>

@@ -7,7 +7,7 @@ xmeans.genTestData = function(dims, n) {
         var row = [];
         for (var j = 0; j < dims; j++) {
             // Don't change this interval or else rendering will fail
-            row.push(random(0,500));
+            row.push(xmeans._random(0,500));
         }
         data.push(row);
     }
@@ -23,7 +23,7 @@ xmeans.genTestData2 = function(dims, n, k, sd) {
     for (var i = 0; i < k; i++) {
         var centroid = [];
         for (var j = 0; j < dims; j++) {
-            centroid.push(xmeans._random(100,400));
+            centroid.push(xmeans._random(100,900));
         }
 
         generators.push(function() {
