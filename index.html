@@ -16,7 +16,6 @@
         }
 
     </style>
-    <script src="jquery-2.1.4.min.js"></script>
 </head>
 <body>
     <div>
@@ -61,9 +60,9 @@
     </div>
     <script src="xmeans.js"></script>
     <script>
-    $(document).ready(function() {
+    window.onload = function() {
             xmeans.render(xmeans.oxmeans(xmeans.genTestData2(2, 2000, 7, 50)));
-    });
+    };
     </script>
 </body>
 </html>
